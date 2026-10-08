@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <title>EV Charging - Resident Dashboard</title>
+
+    <style>
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f7f9;
+            margin: 0;
+        }
+
+        header {
+            background: #1f2937;
+            color: white;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h1 {
+            margin: 0;
+        }
+
+        button {
+            background: #16a34a;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #15803d;
+        }
+
+        .logout {
+            background: #dc2626;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 30px auto;
+        }
+
+        .section {
+            background: white;
+            padding: 25px;
+            margin-bottom: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        h2 {
+            color: #1f2937;
+        }
+
+        .cards {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .card {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 8px;
+            min-width: 200px;
+        }
+
+        .available {
+            color: green;
+            font-weight: bold;
+        }
+
+        .occupied {
+            color: orange;
+            font-weight: bold;
+        }
+
+        .maintenance {
+            color: red;
+            font-weight: bold;
+        }
+
+        input,
+        select {
+            padding: 10px;
+            margin: 5px 0 15px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        label {
+            font-weight: bold;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background: #f3f4f6;
+        }
+
+        .message {
+            padding: 10px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+<header>
+
+    <h1>⚡ EV Charging System</h1>
+
+    <div>
+        <span id="welcome"></span>
+        <button class="logout" onclick="logout()">Logout</button>
+    </div>
+
+</header>
+
+
+<div class="container">
+
+
+    <!-- VEHICLES -->
+
+    <div class="section">
+
+        <h2>🚗 My Vehicles</h2>
+
+        <div id="vehicles">
+            Loading vehicles...
+        </div>
+
+    </div>
+
+
+    <!-- CHARGERS -->
+
+    <div class="section">
+
+        <h2>🔌 Charging Stations</h2>
+
+        <div id="chargers" class="cards">
+            Loading chargers...
+        </div>
+
+    </div>
+
+
+    <!-- BOOKING -->
+
+    <div class="section">
+
+        <h2>📅 Book a Charger</h2>
+
+        <form id="bookingForm">
+
+            <label>Vehicle</label>
+
+            <select id="vehicleSelect" required>
+                <option value="">Select Vehicle</option>
+            </select>
+
+
+            <label>Charger</label>
+
+            <select id="chargerSelect" required>
+                <option value="">Select Charger</option>
+            </select>
+
+
+            <label>Date</label>
+
+            <input
+                type="date"
+                id="bookingDate"
+                required
+            >
+
+
+            <label>Start Time</label>
+
+            <input
+                type="time"
+                id="startTime"
+                required
+            >
+
+
+            <label>End Time</label>
+
+            <input
+                type="time"
+                id="endTime"
+                required
+            >
+
+
+            <button type="submit">
+                Book Charger
+            </button>
+
+        </form>
+
+        <div id="bookingMessage"></div>
+
+    </div>
+
+
+    <!-- BOOKINGS -->
+
+    <div class="section">
+
+        <h2>📋 My Bookings</h2>
+
+        <div id="bookings">
+            Loading bookings...
+        </div>
+
+    </div>
+
+<!-- MY CHARGING SESSIONS -->
+
+<div class="section">
+
+    <h2>⚡ My Charging Sessions</h2>
+
+    <div id="sessionTable">
+        Loading...
+    </div>
+
+</div>
+
+
+    <!-- PAYMENTS -->
+
+    <div class="section">
+
+        <h2>💳 My Payments</h2>
+
+        <div id="payments">
+            Loading payments...
+        </div>
+
+    </div>
+
+
+</div>
+
+
+<script>
+
+// LOAD MY CHARGING SESSIONS
+
+async function loadMySessions() {
+
+    const response =
+        await fetch("/sessions");
+
+    const sessions =
+        await response.json();
+
+
+    // Only show sessions belonging
+    // to the logged-in resident
+
+    const mySessions =
+        sessions.filter(
+            session =>
+                Number(session.Resident_ID) ===
+                Number(user.User_ID)
+        );
+
+
+    const container =
+        document.getElementById(
+            "sessionTable"
+        );
+
+
+    if (mySessions.length === 0) {
+
+        container.innerHTML =
+            "<p>No charging sessions found.</p>";
+
+        return;
+    }
+
+
+    let html = `
+
+        <table>
+
+            <tr>
+
+                <th>Session ID</th>
+
+                <th>Vehicle</th>
+
+                <th>Charger</th>
+
+                <th>Start Time</th>
+
+                <th>End Time</th>
+
+                <th>Energy</th>
+
+                <th>Total Cost</th>
+
+            </tr>
+
+    `;
+
+
+    mySessions.forEach(session => {
+
+        html += `
+
+            <tr>
+
+                <td>
+                    ${session.Session_ID}
+                </td>
+
+                <td>
+                    ${session.Vehicle_Number}
+                </td>
+
+                <td>
+                    Charger ${session.Charger_ID}
+                </td>
+
+                <td>
+                    ${session.Start_Time}
+                </td>
+
+                <td>
+                    ${session.End_Time}
+                </td>
+
+                <td>
+                    ${session.Energy_Consumed}
+                    kWh
+                </td>
+
+                <td>
+                    ₹${Number(
+                        session.Total_Cost
+                    ).toFixed(2)}
+                </td>
+
+            </tr>
+
+        `;
+
+    });
+
+
+    html += "</table>";
+
+
+    container.innerHTML = html;
+
+}
+
+// GET LOGGED USER
+
+const user = JSON.parse(
+    localStorage.getItem("user")
+);
+
+if (!user || user.Role !== "USER") {
+
+    window.location.href = "/";
+
+}
+
+document.getElementById("welcome").innerText =
+    "Welcome, " + user.Email;
+
+// LOAD VEHICLES
+
+let myVehicles = [];
+
+async function loadVehicles() {
+
+    const response =
+        await fetch("/vehicles/" + user.User_ID);
+
+    myVehicles = await response.json();
+
+    const container =
+        document.getElementById("vehicles");
+
+    const select =
+        document.getElementById("vehicleSelect");
+
+    container.innerHTML = "";
+    select.innerHTML =
+        '<option value="">Select Vehicle</option>';
+
+    myVehicles.forEach(vehicle => {
+
+        container.innerHTML += `
+            <div class="card">
+                <b>${vehicle.Vehicle_Number}</b><br>
+                Type: ${vehicle.Vehicle_Type}<br>
+                Battery:
+                ${vehicle.Battery_Capacity} kWh
+            </div>
+        `;
+
+        select.innerHTML += `
+            <option value="${vehicle.Vehicle_ID}">
+                ${vehicle.Vehicle_Number}
+            </option>
+        `;
+
+    });
+
+}
+
+// LOAD CHARGERS
+
+let allChargers = [];
+
+async function loadChargers() {
+
+    const response =
+        await fetch("/chargers");
+
+    allChargers = await response.json();
+
+    const container =
+        document.getElementById("chargers");
+
+    const select =
+        document.getElementById("chargerSelect");
+
+    container.innerHTML = "";
+
+    select.innerHTML =
+        '<option value="">Select Charger</option>';
+
+
+    allChargers.forEach(charger => {
+
+        let statusClass = "";
+
+        if (charger.Status === "Available") {
+            statusClass = "available";
+        }
+
+        if (charger.Status === "Occupied") {
+            statusClass = "occupied";
+        }
+
+        if (
+            charger.Status === "Under Maintenance"
+        ) {
+            statusClass = "maintenance";
+        }
+
+
+        container.innerHTML += `
+            <div class="card">
+
+                <h3>
+                    Charger ${charger.Charger_ID}
+                </h3>
+
+                Type:
+                ${charger.Charger_Type}<br>
+
+                Power:
+                ${charger.Power_Rating} kW<br>
+
+                Location:
+                ${charger.Location}<br>
+
+                Status:
+                <span class="${statusClass}">
+                    ${charger.Status}
+                </span>
+
+            </div>
+        `;
+
+
+        if (charger.Status === "Available") {
+
+            select.innerHTML += `
+                <option value="${charger.Charger_ID}">
+                    Charger ${charger.Charger_ID}
+                    - ${charger.Charger_Type}
+                    - ${charger.Location}
+                </option>
+            `;
+
+        }
+
+    });
+
+}
+
+// BOOK CHARGER
+
+document
+.getElementById("bookingForm")
+.addEventListener("submit", async function(e) {
+
+    e.preventDefault();
+
+
+    const vehicleId =
+        document.getElementById("vehicleSelect").value;
+
+    const chargerId =
+        document.getElementById("chargerSelect").value;
+
+    const bookingDate =
+        document.getElementById("bookingDate").value;
+
+    const startTime =
+        document.getElementById("startTime").value;
+
+    const endTime =
+        document.getElementById("endTime").value;
+
+
+    if (startTime >= endTime) {
+
+        document.getElementById(
+            "bookingMessage"
+        ).innerHTML =
+            '<p style="color:red">End time must be after start time.</p>';
+
+        return;
+
+    }
+
+
+    const response = await fetch(
+        "/bookings",
+        {
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+
+                Resident_ID: user.User_ID,
+
+                Vehicle_ID: vehicleId,
+
+                Charger_ID: chargerId,
+
+                Booking_Date: bookingDate,
+
+                Start_Time: startTime,
+
+                End_Time: endTime
+
+            })
+
+        }
+    );
+
+
+    const message =
+        await response.text();
+
+
+    if (response.ok) {
+
+        document.getElementById(
+            "bookingMessage"
+        ).innerHTML =
+            `<p style="color:green">${message}</p>`;
+
+        document
+        .getElementById("bookingForm")
+        .reset();
+
+        loadBookings();
+
+    } else {
+
+        document.getElementById(
+            "bookingMessage"
+        ).innerHTML =
+            `<p style="color:red">${message}</p>`;
+
+    }
+
+});
+
+// LOAD BOOKINGS
+
+async function loadBookings() {
+
+    const response =
+        await fetch("/bookings");
+
+    const bookings =
+        await response.json();
+
+
+    const myBookings =
+        bookings.filter(
+            booking =>
+            booking.Resident_ID == user.User_ID
+        );
+
+
+    const container =
+        document.getElementById("bookings");
+
+
+    if (myBookings.length === 0) {
+
+        container.innerHTML =
+            "No bookings found.";
+
+        return;
+
+    }
+
+
+    let html = `
+        <table>
+
+            <tr>
+                <th>Booking ID</th>
+                <th>Vehicle</th>
+                <th>Charger</th>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Status</th>
+            </tr>
+    `;
+
+
+    myBookings.forEach(booking => {
+
+        html += `
+            <tr>
+
+                <td>
+                    ${booking.Booking_ID}
+                </td>
+
+                <td>
+                    ${booking.Vehicle_Number}
+                </td>
+
+                <td>
+                    Charger ${booking.Charger_ID}
+                </td>
+
+                <td>
+                    ${formatDate(booking.Booking_Date)}
+                </td>
+
+                <td>
+                    ${booking.Start_Time}
+                    -
+                    ${booking.End_Time}
+                </td>
+
+                <td>
+                    ${booking.Booking_Status}
+                </td>
+
+            </tr>
+        `;
+
+    });
+
+
+    html += "</table>";
+
+    container.innerHTML = html;
+
+}
+
+// LOAD PAYMENTS
+
+async function loadPayments() {
+
+    const response =
+        await fetch("/payments");
+
+    const payments =
+        await response.json();
+
+
+    const sessionsResponse =
+        await fetch("/sessions");
+
+    const sessions =
+        await sessionsResponse.json();
+
+
+    const mySessions =
+        sessions.filter(
+            session =>
+            session.Resident_ID == user.User_ID
+        );
+
+
+    const mySessionIds =
+        mySessions.map(
+            session => session.Session_ID
+        );
+
+
+    const myPayments =
+        payments.filter(
+            payment =>
+            mySessionIds.includes(payment.Session_ID)
+        );
+
+
+    const container =
+        document.getElementById("payments");
+
+
+    if (myPayments.length === 0) {
+
+        container.innerHTML =
+            "No payments found.";
+
+        return;
+
+    }
+
+
+    let html = `
+        <table>
+
+            <tr>
+                <th>Payment ID</th>
+                <th>Session ID</th>
+                <th>Date</th>
+                <th>Amount</th>
+                <th>Mode</th>
+                <th>Status</th>
+            </tr>
+    `;
+
+
+    myPayments.forEach(payment => {
+
+        html += `
+            <tr>
+
+                <td>
+                    ${payment.Payment_ID}
+                </td>
+
+                <td>
+                    ${payment.Session_ID}
+                </td>
+
+                <td>
+                    ${formatDate(payment.Payment_Date)}
+                </td>
+
+                <td>
+                    ₹${payment.Amount}
+                </td>
+
+                <td>
+                    ${payment.Payment_Mode}
+                </td>
+
+                <td>
+                    ${payment.Payment_Status}
+                </td>
+
+            </tr>
+        `;
+
+    });
+
+
+    html += "</table>";
+
+    container.innerHTML = html;
+
+}
+
+// DATE FORMAT
+
+function formatDate(date) {
+
+    if (!date) {
+        return "";
+    }
+
+    return String(date).substring(0, 10);
+
+}
+
+// LOGOUT
+
+function logout() {
+
+    localStorage.removeItem("user");
+
+    window.location.href = "/";
+
+}
+
+// START
+
+loadVehicles();
+loadChargers();
+loadBookings();
+loadMySessions();
+loadPayments();
+
+</script>
+
+</body>
+
+</html>
